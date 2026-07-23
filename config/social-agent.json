@@ -1,0 +1,40 @@
+{
+  "brand": {
+    "name": "Viento Art",
+    "since": "2009",
+    "industry": "luxury furniture, custom interiors, exhibition stands, tiny house interiors",
+    "tone": "premium, calm, architectural, trustworthy",
+    "languages": ["tr", "en"],
+    "website": "https://vientoart.com"
+  },
+  "posting": {
+    "targetServices": ["instagram", "tiktok"],
+    "defaultMode": "addToQueue",
+    "hashtags": [
+      "#vientoart",
+      "#mobilya",
+      "#interiordesign",
+      "#fuarstandı",
+      "#tinyhouse",
+      "#luxuryinteriors",
+      "#customfurniture"
+    ]
+  },
+  "contentPillars": [
+    "before/after interior transformations",
+    "custom furniture craftsmanship",
+    "exhibition stand design",
+    "tiny house interior ideas",
+    "luxury material details",
+    "space-saving design ideas",
+    "international project trust signals"
+  ],
+  "video": {
+    "durationSeconds": 8,
+    "width": 1080,
+    "height": 1920
+  },
+  "asset": {
+    "defaultType": "image"
+  }
+}

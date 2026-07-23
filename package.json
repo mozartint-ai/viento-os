@@ -1,0 +1,14 @@
+{
+  "name": "viento-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Viento Art social media automation agents.",
+  "scripts": {
+    "social:agent": "node scripts/social-agent.mjs",
+    "social:dry-run": "SOCIAL_AGENT_DRY_RUN=true node scripts/social-agent.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
