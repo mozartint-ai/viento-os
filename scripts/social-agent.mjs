@@ -13,7 +13,7 @@ const env = {
   cloudName: process.env.CLOUDINARY_CLOUD_NAME,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
-  geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
   assetType: String(process.env.SOCIAL_ASSET_TYPE || config.asset?.defaultType || "image").toLowerCase(),
   dryRun: String(process.env.SOCIAL_AGENT_DRY_RUN || "false").toLowerCase() === "true"
 };
@@ -51,7 +51,7 @@ async function main() {
   const channels = await getTargetChannels(buffer, organization.id);
 
   if (channels.length === 0) {
-    throw new Error("Buffer içinde Instagram veya TikTok kanalı bulunamadı. Buffer bağlantılarını kontrol et.");
+    throw new Error("Buffer iÃ§inde Instagram veya TikTok kanalÄ± bulunamadÄ±. Buffer baÄŸlantÄ±larÄ±nÄ± kontrol et.");
   }
 
   console.log("Target channels:", channels.map((channel) => `${channel.service}:${channel.name}`).join(", "));
@@ -67,7 +67,7 @@ async function main() {
   let successCount = 0;
   for (const channel of channels) {
     try {
-      const post = await createMediaPost(buffer, channel.id, caption, mediaUrl, env.assetType);
+      const post = await createMediaPost(buffer, channel, caption, mediaUrl, env.assetType);
       successCount += 1;
       console.log(`Queued ${channel.service} post:`, post.id, post.dueAt || "next available slot");
     } catch (error) {
@@ -76,7 +76,7 @@ async function main() {
   }
 
   if (successCount === 0) {
-    throw new Error("Hiçbir Buffer kanalına post eklenemedi.");
+    throw new Error("HiÃ§bir Buffer kanalÄ±na post eklenemedi.");
   }
 }
 
@@ -159,12 +159,12 @@ ${JSON.stringify(config, null, 2)}
   const parsed = JSON.parse(text);
   return {
     pillar: parsed.pillar || "custom interiors",
-    hook_tr: parsed.hook_tr || "Mekânı karaktere dönüştüren detaylar",
+    hook_tr: parsed.hook_tr || "MekÃ¢nÄ± karaktere dÃ¶nÃ¼ÅŸtÃ¼ren detaylar",
     hook_en: parsed.hook_en || "Details that transform spaces",
-    caption_tr: parsed.caption_tr || "Viento Art ile özel üretim mobilya ve iç mimari çözümler.",
+    caption_tr: parsed.caption_tr || "Viento Art ile Ã¶zel Ã¼retim mobilya ve iÃ§ mimari Ã§Ã¶zÃ¼mler.",
     caption_en: parsed.caption_en || "Custom furniture and interior solutions by Viento Art.",
-    video_lines: Array.isArray(parsed.video_lines) ? parsed.video_lines.slice(0, 5) : ["Viento Art", "Özel üretim mobilya", "2009'dan beri"],
-    cta: parsed.cta || "Projeniz için bize ulaşın.",
+    video_lines: Array.isArray(parsed.video_lines) ? parsed.video_lines.slice(0, 5) : ["Viento Art", "Ã–zel Ã¼retim mobilya", "2009'dan beri"],
+    cta: parsed.cta || "Projeniz iÃ§in bize ulaÅŸÄ±n.",
     hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : config.posting.hashtags
   };
 }
@@ -293,7 +293,7 @@ async function getPrimaryOrganization(buffer) {
     }
   `);
   const organization = data.account?.organizations?.[0];
-  if (!organization) throw new Error("Buffer organization bulunamadı.");
+  if (!organization) throw new Error("Buffer organization bulunamadÄ±.");
   return organization;
 }
 
@@ -317,7 +317,7 @@ async function getTargetChannels(buffer, organizationId) {
   });
 }
 
-async function createMediaPost(buffer, channelId, text, mediaUrl, assetType) {
+async function createMediaPost(buffer, channel, text, mediaUrl, assetType) {
   const asset = assetType === "video"
     ? { video: { url: mediaUrl, metadata: { thumbnailOffset: 1500 } } }
     : { image: { url: mediaUrl } };
@@ -344,7 +344,8 @@ async function createMediaPost(buffer, channelId, text, mediaUrl, assetType) {
   `, {
     input: {
       text,
-      channelId,
+      channelId: channel.id,
+      metadata: buildMetadata(channel, assetType),
       schedulingType: "automatic",
       mode: config.posting.defaultMode || "addToQueue",
       assets: [asset]
@@ -353,7 +354,7 @@ async function createMediaPost(buffer, channelId, text, mediaUrl, assetType) {
 
   const payload = data.createPost;
   if (payload?.message) throw new Error(`Buffer mutation error: ${payload.message}`);
-  if (!payload?.post?.id) throw new Error("Buffer post oluşturuldu ama id dönmedi.");
+  if (!payload?.post?.id) throw new Error("Buffer post oluÅŸturuldu ama id dÃ¶nmedi.");
   return payload.post;
 }
 
@@ -364,6 +365,31 @@ function buildCaption(idea) {
     .join(" ");
 
   return `${idea.hook_tr}\n\n${idea.caption_tr}\n\n${idea.caption_en}\n\n${idea.cta}\n\n${hashtags}`;
+}
+
+function buildMetadata(channel, assetType) {
+  const service = String(channel.service || "").toLowerCase();
+
+  if (service === "instagram") {
+    return {
+      instagram: {
+        type: assetType === "video" ? "reel" : "post",
+        shouldShareToFeed: true,
+        isAiGenerated: true
+      }
+    };
+  }
+
+  if (service === "tiktok") {
+    return {
+      tiktok: {
+        title: "Viento Art",
+        isAiGenerated: assetType === "video"
+      }
+    };
+  }
+
+  return undefined;
 }
 
 function run(command, args) {
