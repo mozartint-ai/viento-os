@@ -51,7 +51,7 @@ async function main() {
   const channels = await getTargetChannels(buffer, organization.id);
 
   if (channels.length === 0) {
-    throw new Error("Buffer iÃ§inde Instagram veya TikTok kanalÄ± bulunamadÄ±. Buffer baÄŸlantÄ±larÄ±nÄ± kontrol et.");
+    throw new Error("Buffer içinde Instagram veya TikTok kanalı bulunamadı. Buffer bağlantılarını kontrol et.");
   }
 
   console.log("Target channels:", channels.map((channel) => `${channel.service}:${channel.name}`).join(", "));
@@ -76,7 +76,7 @@ async function main() {
   }
 
   if (successCount === 0) {
-    throw new Error("HiÃ§bir Buffer kanalÄ±na post eklenemedi.");
+    throw new Error("Hiçbir Buffer kanalına post eklenemedi.");
   }
 }
 
@@ -159,12 +159,12 @@ ${JSON.stringify(config, null, 2)}
   const parsed = JSON.parse(text);
   return {
     pillar: parsed.pillar || "custom interiors",
-    hook_tr: parsed.hook_tr || "MekÃ¢nÄ± karaktere dÃ¶nÃ¼ÅŸtÃ¼ren detaylar",
+    hook_tr: parsed.hook_tr || "Mekânı karaktere dönüştüren detaylar",
     hook_en: parsed.hook_en || "Details that transform spaces",
-    caption_tr: parsed.caption_tr || "Viento Art ile Ã¶zel Ã¼retim mobilya ve iÃ§ mimari Ã§Ã¶zÃ¼mler.",
+    caption_tr: parsed.caption_tr || "Viento Art ile özel üretim mobilya ve iç mimari çözümler.",
     caption_en: parsed.caption_en || "Custom furniture and interior solutions by Viento Art.",
-    video_lines: Array.isArray(parsed.video_lines) ? parsed.video_lines.slice(0, 5) : ["Viento Art", "Ã–zel Ã¼retim mobilya", "2009'dan beri"],
-    cta: parsed.cta || "Projeniz iÃ§in bize ulaÅŸÄ±n.",
+    video_lines: Array.isArray(parsed.video_lines) ? parsed.video_lines.slice(0, 5) : ["Viento Art", "Özel üretim mobilya", "2009'dan beri"],
+    cta: parsed.cta || "Projeniz için bize ulaşın.",
     hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : config.posting.hashtags
   };
 }
@@ -205,33 +205,189 @@ async function renderVideo(outputPath, idea) {
 }
 
 async function renderImage(outputPath, idea) {
-  const lines = [
-    config.brand.name,
-    ...idea.video_lines,
-    idea.cta
-  ].slice(0, 6);
-
-  const textFile = path.join(tmpDir, "image-lines.txt");
-  await writeFile(textFile, lines.join("\n\n"), "utf8");
-
   const width = Number(config.video.width || 1080);
   const height = Number(config.video.height || 1920);
-
-  const filter = [
-    `scale=${width}:${height}`,
-    `drawbox=x=70:y=70:w=${width - 140}:h=${height - 140}:color=white@0.10:t=3`,
-    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:textfile='${textFile}':fontcolor=white:fontsize=60:line_spacing=20:x=90:y=(h-text_h)/2:box=1:boxcolor=black@0.18:boxborderw=28`
-  ].join(",");
+  const svgPath = path.join(tmpDir, "visual-card.svg");
+  await writeFile(svgPath, buildImageSvg(width, height, idea), "utf8");
 
   await run("ffmpeg", [
     "-y",
-    "-f", "lavfi",
-    "-i", `color=c=0x101010:s=${width}x${height}:d=1`,
+    "-i", svgPath,
     "-frames:v", "1",
-    "-vf", filter,
     "-q:v", "2",
     outputPath
   ]);
+}
+
+function buildImageSvg(width, height, idea) {
+  const palette = pickPalette();
+  const safeHook = cleanText(idea.hook_tr, 72);
+  const safeCaption = cleanText(idea.caption_tr, 135);
+  const detailLines = (idea.video_lines || [])
+    .map((line) => cleanText(line, 46))
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const eyebrow = `${config.brand.name} · Since ${config.brand.since}`;
+  const title = safeHook || "Mekânı karaktere dönüştüren detaylar";
+  const subtitle = safeCaption || "Özel üretim mobilya, iç mimari ve fuar standı çözümleri.";
+  const cta = cleanText(idea.cta || "Projeniz için bize ulaşın.", 48);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${palette.bg1}"/>
+      <stop offset="52%" stop-color="${palette.bg2}"/>
+      <stop offset="100%" stop-color="${palette.bg3}"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="18%" r="70%">
+      <stop offset="0%" stop-color="${palette.glow}" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="${palette.glow}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="34" flood-color="#000000" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  <rect width="100%" height="100%" fill="url(#glow)"/>
+  <circle cx="930" cy="260" r="260" fill="${palette.accent}" opacity="0.10"/>
+  <circle cx="120" cy="1600" r="360" fill="${palette.accent2}" opacity="0.10"/>
+
+  <g opacity="0.16">
+    <path d="M80 310 C280 235 465 260 635 190 S920 95 1030 150" fill="none" stroke="${palette.line}" stroke-width="2"/>
+    <path d="M90 1560 C300 1485 520 1515 705 1435 S935 1330 1030 1380" fill="none" stroke="${palette.line}" stroke-width="2"/>
+  </g>
+
+  <rect x="70" y="86" width="${width - 140}" height="${height - 172}" rx="44" fill="${palette.card}" opacity="0.92" filter="url(#shadow)"/>
+  <rect x="96" y="112" width="${width - 192}" height="${height - 224}" rx="34" fill="none" stroke="${palette.stroke}" stroke-width="2" opacity="0.65"/>
+
+  <text x="130" y="190" fill="${palette.muted}" font-family="DejaVu Sans, Arial, sans-serif" font-size="28" font-weight="600" letter-spacing="3">${escapeXml(eyebrow.toUpperCase())}</text>
+
+  <g transform="translate(130 270)">
+    <rect x="0" y="0" width="108" height="108" rx="28" fill="${palette.accent}"/>
+    <text x="54" y="70" text-anchor="middle" fill="${palette.logoText}" font-family="DejaVu Sans, Arial, sans-serif" font-size="38" font-weight="800">VA</text>
+  </g>
+
+  ${svgTextBlock(title, 130, 485, 820, 66, 78, palette.text, 4, 800)}
+  ${svgTextBlock(subtitle, 130, 800, 820, 38, 54, palette.text, 4, 500, 0.86)}
+
+  <g transform="translate(130 1105)">
+    ${detailLines.map((line, index) => `
+    <g transform="translate(0 ${index * 126})">
+      <circle cx="22" cy="25" r="8" fill="${palette.accent}"/>
+      ${svgTextBlock(line, 58, 0, 730, 34, 48, palette.text, 2, 600, 0.92)}
+    </g>`).join("")}
+  </g>
+
+  <g transform="translate(130 ${height - 260})">
+    <rect x="0" y="0" width="820" height="108" rx="30" fill="${palette.accent}" opacity="0.96"/>
+    <text x="42" y="68" fill="${palette.logoText}" font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="800">${escapeXml(cta)}</text>
+  </g>
+
+  <text x="130" y="${height - 92}" fill="${palette.muted}" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="500">vientoart.com</text>
+</svg>`;
+}
+
+function pickPalette() {
+  const palettes = [
+    {
+      bg1: "#F2EEE7",
+      bg2: "#D8CBBB",
+      bg3: "#A89078",
+      card: "#FFFDF8",
+      text: "#211B16",
+      muted: "#746757",
+      accent: "#7A4F31",
+      accent2: "#C79B66",
+      line: "#7A4F31",
+      stroke: "#C6B49E",
+      glow: "#FFFFFF",
+      logoText: "#FFFFFF"
+    },
+    {
+      bg1: "#101820",
+      bg2: "#1F2A2E",
+      bg3: "#6E604C",
+      card: "#F7F1E8",
+      text: "#151515",
+      muted: "#6E6257",
+      accent: "#9B6A3F",
+      accent2: "#D8B98E",
+      line: "#D8B98E",
+      stroke: "#BFAE98",
+      glow: "#D8B98E",
+      logoText: "#FFFFFF"
+    },
+    {
+      bg1: "#EFE7DD",
+      bg2: "#C8B6A2",
+      bg3: "#75624E",
+      card: "#1E1B18",
+      text: "#FFF8ED",
+      muted: "#D7C7B3",
+      accent: "#C59A62",
+      accent2: "#FFFFFF",
+      line: "#FFFFFF",
+      stroke: "#C59A62",
+      glow: "#FFFFFF",
+      logoText: "#1E1B18"
+    }
+  ];
+  const dayIndex = Math.floor(Date.now() / 86400000) % palettes.length;
+  return palettes[dayIndex];
+}
+
+function svgTextBlock(text, x, y, maxWidth, fontSize, lineHeight, color, maxLines, weight = 500, opacity = 1) {
+  const lines = wrapText(text, Math.max(10, Math.floor(maxWidth / (fontSize * 0.56))), maxLines);
+  return `<text x="${x}" y="${y}" fill="${color}" opacity="${opacity}" font-family="DejaVu Sans, Arial, sans-serif" font-size="${fontSize}" font-weight="${weight}">${lines
+    .map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`)
+    .join("")}</text>`;
+}
+
+function wrapText(text, maxChars, maxLines) {
+  const words = String(text || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const lines = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= maxChars) {
+      current = next;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = word;
+    if (lines.length === maxLines) break;
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+
+  if (lines.length === maxLines) {
+    const consumed = lines.join(" ").length;
+    if (String(text).length > consumed + 4) {
+      lines[maxLines - 1] = `${lines[maxLines - 1].replace(/[.,;:!?-]*$/, "")}…`;
+    }
+  }
+
+  return lines.length ? lines : ["Viento Art"];
+}
+
+function cleanText(text, maxLength) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength)
+    .replace(/\s+\S*$/, "");
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 async function uploadToCloudinary(filePath, assetType) {
@@ -293,7 +449,7 @@ async function getPrimaryOrganization(buffer) {
     }
   `);
   const organization = data.account?.organizations?.[0];
-  if (!organization) throw new Error("Buffer organization bulunamadÄ±.");
+  if (!organization) throw new Error("Buffer organization bulunamadı.");
   return organization;
 }
 
@@ -354,7 +510,7 @@ async function createMediaPost(buffer, channel, text, mediaUrl, assetType) {
 
   const payload = data.createPost;
   if (payload?.message) throw new Error(`Buffer mutation error: ${payload.message}`);
-  if (!payload?.post?.id) throw new Error("Buffer post oluÅŸturuldu ama id dÃ¶nmedi.");
+  if (!payload?.post?.id) throw new Error("Buffer post oluşturuldu ama id dönmedi.");
   return payload.post;
 }
 
